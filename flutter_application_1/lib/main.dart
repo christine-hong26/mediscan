@@ -8,17 +8,24 @@ void main() => runApp(MyApp());
 
 // 3. The main app class that defines the basic structure (StatelessWidget in this case)
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Medication App',
-      home: ImagePickerWidget(), // Using the StatefulWidget here
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: ImagePickerWidget(),
+      ),
     );
   }
 }
 
 // 4. Define the StatefulWidget that contains the image picker functionality
 class ImagePickerWidget extends StatefulWidget {
+  const ImagePickerWidget({super.key});
+
   @override
   _ImagePickerWidgetState createState() => _ImagePickerWidgetState();
 }
@@ -30,7 +37,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
   // Method to capture image from camera
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.getImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
 
     if (pickedFile != null) {
       setState(() {
@@ -45,19 +52,19 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pick an Image'),
+        title: const Text('Pick an Image'),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             _image == null
-                ? Text('No image selected.')
+                ? const Text('No image selected.')
                 : Image.file(_image!), // Display the image if available
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _pickImage, // Button to trigger image picking
-              child: Text('Capture Image'),
+              child: const Text('Capture Image'),
             ),
           ],
         ),
