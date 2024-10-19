@@ -5,7 +5,7 @@ from google.cloud import vision
 model = genai.GenerativeModel(model_name="gemini-pro")
 
 # Replace with your actual API key and the path to your service account key
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/fernandabarraza/Desktop/mediscan-439109-6622ef5bbc56.json" 
+os.environ["GOOGLE_APPLICATION_CRE] = "/Users/fernandabarraza/Desktop/mediscan-439109-6622ef5bbc56.json" 
 os.environ["YOUR_API_KEY"] = "AIzaSyBaFUWQqp1qISn8pZOE2A06GUar5Bg8XAs"
 
 genai.configure(api_key=os.environ["YOUR_API_KEY"])
@@ -36,19 +36,4 @@ if __name__ == "__main__":
 
     print(response.text)
 
-# def get_drug_info(drug_name):
-    # api_url = "https://api.gemini.example.com/drug"  # Replace with actual API endpoint
-    # params = {
-    #     "name": drug_name
-    # }
-    # headers = {
-    #     "Authorization": "Bearer YOUR_API_KEY"  # Include your API key if required
-    # }
-    # response = requests.get(api_url, params=params, headers=headers)
-
-    # if response.status_code == 200:
-    #     return response.json()  # Parse the JSON response
-    # else:
-    #     print(f"Error: {response.status_code}, {response.text}")
-    #     return None
 
