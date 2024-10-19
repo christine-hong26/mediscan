@@ -1,4 +1,12 @@
 import requests
+import google.generativeai as genai
+import os
+
+# Replace with your actual API key and the path to your service account key
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/Users/fernandabarraza/Desktop/mediscan-439109-6622ef5bbc56.json" 
+os.environ["YOUR_API_KEY"] = "YAIzaSyBaFUWQqp1qISn8pZOE2A06GUar5Bg8XAs"
+
+genai.configure(api_key=os.environ["YOUR_API_KEY"])
 
 #Scanning image into text using Google Vision API
 def detect_text(path):
