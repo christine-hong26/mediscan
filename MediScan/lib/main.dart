@@ -1,82 +1,25 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
-  runApp(DrugScannerApp());
+  runApp(MediScanApp());
 }
 
-class DrugScannerApp extends StatelessWidget {
+class MediScanApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: SplashScreen(),
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  @override
-  _SplashScreenState createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(Duration(seconds: 2), () {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Warning', style: TextStyle(fontSize: 24)),
-          content: Text(
-            'The provided information does not replace medical advice. Consult a doctor for professional advice.',
-            style: TextStyle(fontSize: 18),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => SettingsPage()));
-              },
-              child: Text('OK', style: TextStyle(fontSize: 18)),
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 76, 175, 152),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/BackgroundHomepage.png',
-              width: 500,
-              height: 500,
-            ),
-            SizedBox(height: 20),
-            Text(
-              'MediScan',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
+      title: 'MediScan',
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
       ),
+      home: Homepage(),
     );
   }
 }
-
 
 class Homepage extends StatefulWidget {
   @override
@@ -89,17 +32,42 @@ class _HomepageState extends State<Homepage> {
   Future<void> _openCamera(BuildContext context) async {
     final XFile? image = await _picker.pickImage(source: ImageSource.camera);
     if (image != null) {
+      Map<String, String> resultData = await _uploadAndDetectText(File(image.path));
+
       Navigator.of(context).push(MaterialPageRoute(
         builder: (context) => ResultPage(
-          sex: 'Unknown',
-          age: 'Unknown',
-          weight: 'Unknown',
+          detectedText: resultData['detected_text'] ?? 'No text detected',
+          aiResponse: resultData['ai_response'] ?? 'No response from AI',
         ),
       ));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('No photo taken.')),
       );
+    }
+  }
+
+  Future<Map<String, String>> _uploadAndDetectText(File imageFile) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('http://<backend-url>/detect_text'), // Replace with your backend URL
+      );
+      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+
+      var response = await request.send();
+      if (response.statusCode == 200) {
+        String result = await response.stream.bytesToString();
+        Map<String, dynamic> jsonResult = json.decode(result);
+        return {
+          'detected_text': jsonResult['detected_text'],
+          'ai_response': jsonResult['ai_response']
+        };
+      } else {
+        return {'error': 'Error extracting text'};
+      }
+    } catch (e) {
+      return {'error': 'Error: $e'};
     }
   }
 
@@ -162,185 +130,45 @@ class _HomepageState extends State<Homepage> {
   }
 }
 
-class SettingsPage extends StatefulWidget {
-  @override
-  _SettingsPageState createState() => _SettingsPageState();
-}
+class ResultPage extends StatelessWidget {
+  final String detectedText;
+  final String aiResponse;
 
-class _SettingsPageState extends State<SettingsPage> {
-  String? _selectedSex;
-  final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _weightController = TextEditingController();
+  ResultPage({
+    required this.detectedText,
+    required this.aiResponse,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('MediScan'),
+        title: Text('MediScan Result'),
       ),
-      backgroundColor: const Color.fromARGB(255, 76, 175, 152),
-      body: Center(
-        child: Container(
-          width: 500,
-          height: 500,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Please include your information",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 30),
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: 'Sex',
-                    labelStyle: TextStyle(color: Colors.black, fontSize: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black),
-                    ),
-                  ),
-                  dropdownColor: Colors.white.withOpacity(0.9),
-                  style: TextStyle(color: Colors.black, fontSize: 20),
-                  value: _selectedSex,
-                  items: ['Male', 'Female', 'Other']
-                      .map((sex) => DropdownMenuItem(
-                            child: Text(sex, style: TextStyle(fontSize: 20)),
-                            value: sex,
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedSex = value;
-                    });
-                  },
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: _ageController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: Colors.black, fontSize: 20),
-                  decoration: InputDecoration(
-                    labelText: 'Age',
-                    labelStyle: TextStyle(color: Colors.black, fontSize: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: _weightController,
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: Colors.black, fontSize: 20),
-                  decoration: InputDecoration(
-                    labelText: 'Weight (kg)',
-                    labelStyle: TextStyle(color: Colors.black, fontSize: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_selectedSex != null &&
-                        _ageController.text.isNotEmpty &&
-                        _weightController.text.isNotEmpty) {
-                      Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => Homepage()));
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Please fill in all fields')));
-                    }
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30),
-                    child: Text(
-                      'Save',
-                      style: TextStyle(fontSize: 20, color: Colors.black),
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50),
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                  ),
-                ),
-              ],
-            ),
-          ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Detected Text: $detectedText'),
+            SizedBox(height: 10),
+            Text('AI Response: $aiResponse'),
+          ],
         ),
       ),
     );
   }
 }
 
-class ResultPage extends StatelessWidget {
-  final String sex;
-  final String age;
-  final String weight;
-
-  ResultPage({required this.sex, required this.age, required this.weight});
-
+class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('MediScan'),
+        title: Text('Settings'),
       ),
-      backgroundColor: const Color.fromARGB(255, 76, 175, 152),
       body: Center(
-        child: Container(
-          width: 350,
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.8),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Result Page', style: TextStyle(fontSize: 24)),
-              Text('Sex: $sex', style: TextStyle(fontSize: 20)),
-              Text('Age: $age', style: TextStyle(fontSize: 20)),
-              Text('Weight: $weight', style: TextStyle(fontSize: 20)),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('Back'),
-              ),
-            ],
-          ),
-        ),
+        child: Text('Settings Page'),
       ),
     );
   }
