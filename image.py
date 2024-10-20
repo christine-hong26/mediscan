@@ -6,12 +6,12 @@ import hume
 from hume import HumeClient
 import httpx
 import base64
-from websocket import create_connection
+import websocket
+import uuid
 
 # Read keys from environment variables
 HUME_API_KEY = os.getenv('HUME_API_KEY')
 HUME_SECRET_KEY = os.getenv('HUME_SECRET_KEY')
-
 print(f"HUME_API_KEY: {HUME_API_KEY}")
 print(f"HUME_SECRET_KEY: {HUME_SECRET_KEY}")
 
@@ -27,18 +27,19 @@ resp = httpx.post(
     data={"grant_type": "client_credentials"},
 )
 
-# Request access token
-resp = httpx.post(
-    url="https://api.hume.ai/oauth2-cc/token",
-    headers={"Authorization": f"Basic {encoded_auth}"},
-    data={"grant_type": "client_credentials"},
-)
-
 # Check if the request was successful
 if resp.status_code == 200:
     access_token = resp.json().get('access_token')
     if access_token is None:
         print("Access token not found in response.")
+    else:
+        print(f"Access Token: {access_token}")  # Log the access token
+
+        # Step to open an authenticated WebSocket connection
+        ws_url = f"wss://api.hume.ai/v0/evi/chat?access_token={access_token}"
+        ws = websocket.create_connection(ws_url)
+        print("WebSocket connection established.")
+
 else:
     print(f"Error fetching access token: {resp.status_code} - {resp.text}")
 
@@ -59,18 +60,22 @@ hume_client = HumeClient(api_key=HUME_API_KEY)
 
 
 class HumeAPI:
-    def __init__(self, access_token, base_url):
-        self.hume_client = hume_client
+    def __init__(self, api_key, access_token, base_url):
+        self.api_key = api_key  # Store the API key
+        self.access_token = access_token  # Store the access token
+        self.base_url = base_url  # Store base_url as an instance variable
 
     def send_message(self, message_data):
         url = f"{self.base_url}/messages"  # Ensure this URL is correct for your use case
         headers = {
-            "Authorization": f"Bearer {self.hume_client.api_key}",  # Use the API key directly
+            "Authorization": f"Bearer {self.access_token}",  # Use the access token for authorization
             "Content-Type": "application/json"
         }
         response = requests.post(url, json=message_data, headers=headers)
         return response.json()
-    hume_api = HumeAPI(hume_client=hume_client, base_url="https://api.hume.ai/v0/evi/tools")
+
+# Instantiate HumeAPI with the access token
+hume_api = HumeAPI(api_key=HUME_API_KEY, access_token=access_token, base_url="https://api.hume.ai/v0/evi/tools")
 
 
 class ChatSession:
@@ -78,14 +83,8 @@ class ChatSession:
         self.session_id = None
 
     def start_new_session(self):
-        self.session_id = "unique_session_id"  # Replace with actual session ID generation
-
-def start_conversation():
-    # Send the welcome message at the start
-    welcome_message = {
-        "text": "Welcome! I will now process your medication details.",
-        "session_id": current_session_id
-    }
+        self.session_id = str(uuid.uuid4())  # Generate a new UUID and convert it to string
+        print("New Session ID:", self.session_id)  # Log the new session ID for debugging
 
 def start_conversation(current_session_id, gemini_response):
     # Step 1: Send the welcome message
@@ -149,7 +148,7 @@ if __name__ == "__main__":
 
     # Initialize Hume API directly with API key
     hume_client = HumeClient(api_key=HUME_API_KEY)
-    hume_api = HumeAPI(hume_client=hume_client, base_url="https://api.hume.ai/v0/evi/tools")
+    hume_api = HumeAPI(api_key=HUME_API_KEY, access_token=access_token, base_url="https://api.hume.ai/v0/evi/tools")
     chat_session = ChatSession()
     chat_session.start_new_session()
     current_session_id = chat_session.session_id
